@@ -33,7 +33,7 @@ console = require("Console");
       },
       choices: getValidTextures()
     });
-    let texture = await new Promise(function (resolve, reject) {
+    let texture = await new Promise(function(resolve, reject) {
       t.run()
         .then(resolve)
         .catch(reject);
@@ -49,7 +49,7 @@ console = require("Console");
       },
       choices: getValidTextures(true)
     });
-    let texture = await new Promise(function (resolve, reject) {
+    let texture = await new Promise(function(resolve, reject) {
       t.run()
         .then(resolve)
         .catch(reject);
@@ -89,7 +89,7 @@ async function split(texture) {
     etr: "Calculating..."
   });
 
-  let int = setInterval(function () {
+  let int = setInterval(function() {
     ps += (count - ps) / 10;
     count = 0;
   }, 1000);
@@ -123,7 +123,7 @@ async function split(texture) {
     });
     current++;
     pbar.update(current, {
-      etr: (function () {
+      etr: (function() {
         let s, m, h;
         s = Math.round((workload - current) / ps);
         if (s > 60) {
@@ -149,7 +149,7 @@ async function merge(texture) {
   const images = parsed.frames;
 
   const dim = parseVal(meta.size);
-  
+
   let out = sharp({
     create: {
       width: dim[0],
@@ -170,7 +170,7 @@ async function merge(texture) {
       break;
     }
     const pos = parseVal(images[img].textureRect)[0];
-    let { data:i } = await new Promise(function (resolve) {
+    let { data: i } = await new Promise(function(resolve) {
       let temp = sharp(`${texture}/${img}`);
       resetLog(`Loading ${img} ...`)
       if (images[img].textureRotated) {
@@ -191,13 +191,13 @@ async function merge(texture) {
     fs.mkdirSync(`./merged`);
   }
 
-  resetLog("Merging Texture...")
+  resetLog("Merging Texture...");
 
   out.composite(composite)
     .toFile(`merged/${texture}.png`)
-    .then(async function () {
+    .then(async function() {
       resetLog(`Merge complete! You can find your file at ./merged/${texture}.png`)
-      await new Promise(function(){});
+      await new Promise(function() { });
     })
     .catch(_console.log);
 }
@@ -226,7 +226,7 @@ function getDirFolders() {
 function getValidTextures(merge = false) {
   let f;
   if (merge) {
-    f = getDirFolders().filter(function (folder) {
+    f = getDirFolders().filter(function(folder) {
       if (getDirFiles().includes(`${folder}.plist`)) return true;
     });
   } else {
@@ -242,7 +242,7 @@ function getValidTextures(merge = false) {
   });
 }
 
-function resetLog (a) {
+function resetLog(a) {
   process.stdout.clearLine();
   process.stdout.cursorTo(0);
   process.stdout.write(a);
