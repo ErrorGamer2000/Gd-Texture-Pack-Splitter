@@ -1,0 +1,24 @@
+{
+  "name": "gd-texture-pack-splitter",
+  "version": "1.0.0",
+  "description": "Split Geometry Dash Textures into seperate files for cusomization.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "gd",
+    "geometry",
+    "dash"
+  ],
+  "author": "ErrorGamer2000",
+  "license": "ISC",
+  "dependencies": {
+    "Console": "^1.1.0",
+    "chalk": "^4.1.1",
+    "cli-progress": "^3.9.0",
+    "enquirer": "^2.3.6",
+    "plist": "^3.0.2",
+    "sharp": "^0.28.1"
+  }
+}
