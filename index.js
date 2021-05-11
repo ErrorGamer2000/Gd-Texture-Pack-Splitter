@@ -1,14 +1,33 @@
-const plist = require("plist");
-const fs = require("fs");
-const sharp = require('sharp');
+/**
+ * Before you start going through my code, I want to apologize for my messy code style.
+ * I tried to make this as readable as possible and add helpful comments.
+ */
+
+/*Core modules*/
+const plist = require("plist");/*Plist module:
+    Plist files are Mac OS X files written in XML.
+    The GD split commands are in .plist files.*/
+
+const fs = require("fs"); //File system to read local texture files
+
+const sharp = require('sharp'); //Image editing package
+
+/*UI modules*/
 const { AutoComplete, Select } = require('enquirer');
 const progress = require("cli-progress");
 const chalk = require("chalk");
-const _console = console;
-console = require("Console");
+const _console = require("Console");
 
+deleteDir("temp");
 
+Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
+    return Array.from(Array(Math.ceil(this.length/n)), (_,i)=>this.slice(i*n,i*n+n));
+}});
+
+//Main function
 (async function() {
+
+  //Action Prompt
   let prompt = new Select({
     name: "action",
     message: "What action would you like to preform?",
@@ -18,6 +37,7 @@ console = require("Console");
     ]
   });
 
+  //Wait for user's input
   let a = await new Promise(function(resolve, reject) {
     prompt.run()
       .then(resolve)
@@ -25,6 +45,7 @@ console = require("Console");
   })
 
   if (a === "Split a texture") {
+    //Split action chosen, lets find the texture!
     let t = new AutoComplete({
       name: "texture",
       message: "Choose a texture:",
@@ -33,14 +54,21 @@ console = require("Console");
       },
       choices: getValidTextures()
     });
+
+    //Wait for response
     let texture = await new Promise(function(resolve, reject) {
       t.run()
         .then(resolve)
         .catch(reject);
     });
+
+    //Wait for split
     await split(texture);
-    process.exit();
+
+    //End script
+    //process.exit();
   } else {
+    //Merge action chosen, lets find the texture!
     let t = new AutoComplete({
       name: "texture",
       message: "Choose a texture:",
@@ -49,28 +77,35 @@ console = require("Console");
       },
       choices: getValidTextures(true)
     });
+
+    //Wait for response
     let texture = await new Promise(function(resolve, reject) {
       t.run()
         .then(resolve)
         .catch(reject);
     });
+
+    //Wait for merge
     await merge(texture);
+
+    //End script
+    //process.exit();
   };
 })();
 
 async function split(texture) {
-  let text = fs.readFileSync(`./${texture}.plist`).toString();
-  let start = new Date();
-  let count = 0;
-  let ps = 0;
+  let text = fs.readFileSync(`./${texture}.plist`).toString(); //Read the .plist file for the texture
 
-  let parsed = plist.parse(text);
+  let count = 0; //Completed images (in the past second) - Only for ETA
+  let ps = 0; //Approximate images/second - Only for ETA
 
-  const meta = parsed.metadata;
-  const images = parsed.frames;
+  let parsed = plist.parse(text); //Turn the .plist file into a much more usable object
 
-  const workload = Object.keys(images).length;
-  let current = 0;
+  const meta = parsed.metadata; //Metadata defs
+  const images = parsed.frames; //Image data
+
+  const workload = Object.keys(images).length; //Total image count
+  let current = 0; //Current package
   let now;
 
   const [width, height] = parseVal(meta.size);
@@ -96,11 +131,10 @@ async function split(texture) {
 
   for (const img in images) {
     count++;
-    now = new Date();
-    let time = (now - start) / 1000;
     if (fs.existsSync(`./${texture}/${img}`)) {
-      console.warn(`Skipping ${img} because it already exists.`);
+      _console.warn(`Skipping ${img} because it already exists.`);
       current++;
+      count--; //Shouldn't count as being processed...
       continue;
     }
     const pos = parseVal(images[img].textureRect)[0];
@@ -149,32 +183,18 @@ async function merge(texture) {
   const images = parsed.frames;
 
   const dim = parseVal(meta.size);
-
-  let out = sharp({
-    create: {
-      width: dim[0],
-      height: dim[1],
-      channels: 4,
-      background: {
-        r: 0,
-        g: 0,
-        b: 0,
-        alpha: 0
-      }
-    }
-  });
+  
   let composite = [];
   for (const img in images) {
     if (!fs.existsSync(`${texture}/${img}`)) {
-      console.error(`Error: Image "${img}" does not exist.`);
-      break;
+      _console.error(`Error: Image "${img}" does not exist.`);
+      return false;
     }
     const pos = parseVal(images[img].textureRect)[0];
     let { data: i } = await new Promise(function(resolve) {
       let temp = sharp(`${texture}/${img}`);
       resetLog(`Loading ${img} ...`)
       if (images[img].textureRotated) {
-        resetLog(`Rotating ${img} ...`)
         temp = temp.rotate(90);
       }
       temp.toBuffer({ resolveWithObject: true })
@@ -191,15 +211,52 @@ async function merge(texture) {
     fs.mkdirSync(`./merged`);
   }
 
-  resetLog("Merging Texture...");
+  if (!fs.existsSync(`./temp`)) {
+    fs.mkdirSync(`./temp`);
+  }
 
-  out.composite(composite)
-    .toFile(`merged/${texture}.png`)
-    .then(async function() {
-      resetLog(`Merge complete! You can find your file at ./merged/${texture}.png`)
-      await new Promise(function() { });
+  resetLog("Merging Texture...");
+  
+  const workload = Object.keys(images).length; //Total image count
+  current = 0;
+
+  await new Promise(function (resolve) {
+    sharp({
+      create: {
+        width: dim[0],
+        height: dim[1],
+        channels: 4,
+        background: {
+          r: 0,
+          g: 0,
+          b: 0,
+          alpha: 0
+        }
+      }
     })
-    .catch(_console.log);
+      .toFile("./temp/temp-a.png")
+      .then(resolve);
+  });
+  let even = true;
+  for (const group of composite.chunk(10)) {
+    let first = current + 1;
+    current += group.length;
+    resetLog(`Compositing images ${first} to ${current} of ${workload}`);
+    await new Promise(function (resolve, reject) {
+      let temp = sharp(`./temp/temp${even ? "-a" : "-b"}.png`);
+      temp.composite(group)
+        .toFile(`./temp/temp${!even ? "-a" : "-b"}.png`)
+        .then(function () {
+          deleteFile(`./temp/temp${even ? "-a" : "-b"}.png`);
+          even = !even
+          resolve();
+        });
+    })
+  }
+
+  fs.writeFileSync(`./merged/${texture}.png`, fs.readFileSync(`./temp/temp${even ? "-a" : "-b"}.png`));
+  deleteDir("./temp");
+  resetLog(`Merge finished! You can find you file at merged/${texture}.png`);
 }
 
 function parseVal(v) {
@@ -246,4 +303,20 @@ function resetLog(a) {
   process.stdout.clearLine();
   process.stdout.cursorTo(0);
   process.stdout.write(a);
+}
+
+function deleteDir(d, oe = console.log) {
+  try {
+    fs.rmdirSync(d, { recursive: true });
+  } catch (e) {
+    oe(e)
+  }
+}
+
+function deleteFile(d, oe = console.log) {
+  try {
+    fs.unlinkSync(d);
+  } catch (e) {
+    oe(e)
+  }
 }
