@@ -6,7 +6,7 @@
 /*Core modules*/
 const plist = require("plist");/*Plist module:
     Plist files are Mac OS X files written in XML.
-    The GD split commands are in .plist files.*/
+    The Geometry Dash split commands are in .plist files.*/
 
 const fs = require("fs"); //File system to read local texture files
 
