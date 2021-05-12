@@ -130,9 +130,6 @@ async function split(texture) {
     count = 0;
   }, 1000); //Gets images/sec
 
-  //Get original image
-  const original = sharp(`./${texture}.png`);
-
   for (const img in images) {
     count++; //Increase count of images per second
     if (fs.existsSync(`./${texture}/${img}`)) {
@@ -156,7 +153,7 @@ async function split(texture) {
     
     //Save image
     await new Promise(function(resolve) {
-      original
+      sharp(`./${texture}.png`)
         .extract({
           left: rect[0][0],
           top: rect[0][1],
@@ -303,6 +300,22 @@ function getDirFolders() { //Filter files out of directory listing
   })
 }
 
+function deleteDir(d, oe = console.log) { //Delete a directory
+  try {
+    fs.rmdirSync(d, { recursive: true });
+  } catch (e) {
+    oe(e)
+  }
+}
+
+function deleteFile(d, oe = console.log) { //Delete a file
+  try {
+    fs.unlinkSync(d);
+  } catch (e) {
+    oe(e)
+  }
+}
+
 function getValidTextures(merge = false) { //Get texture names
   let f;
   if (merge) {
@@ -326,20 +339,4 @@ function resetLog(a) { //Replaces that last line in stdout
   process.stdout.clearLine();
   process.stdout.cursorTo(0);
   process.stdout.write(a);
-}
-
-function deleteDir(d, oe = console.log) { //Delete a directory
-  try {
-    fs.rmdirSync(d, { recursive: true });
-  } catch (e) {
-    oe(e)
-  }
-}
-
-function deleteFile(d, oe = console.log) { //Delete a file
-  try {
-    fs.unlinkSync(d);
-  } catch (e) {
-    oe(e)
-  }
 }
